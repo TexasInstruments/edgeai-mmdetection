@@ -6,7 +6,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from mmcv.cnn import ConvModule, normal_init
-from mmcv.runner import force_fp32
+from mmcv.runner.fp16_utils import force_fp32
 from mmcv.cnn import constant_init, kaiming_init
 
 from mmdet.core import (build_anchor_generator, build_assigner,

@@ -69,7 +69,7 @@ import torch
 import logging
 import numpy  as np
 import warnings
-from mmcv.runner import load_checkpoint
+from mmcv.runner import BaseModule
 
 from mmdet.utils import get_root_logger
 from mmdet.models.builder import BACKBONES
@@ -114,15 +114,24 @@ model_urls = {
 }
 
 
-class MobileNetV1Base(torch.nn.Module):
-    def __init__(self, BlockBuilder, model_config):
+class MobileNetV1Base(BaseModule):
+    def __init__(self, BlockBuilder, model_config, pretrained=None,
+                 init_cfg=None):
         """
         MobileNet V1 main class
         """
-        super().__init__()
+        super().__init__(init_cfg)
+		
         self.model_config = model_config
         self.num_classes = self.model_config.num_classes
 
+        assert not (init_cfg and pretrained), \
+            'init_cfg and pretrained cannot be setting at the same time'
+        if isinstance(pretrained, str):
+            warnings.warn('DeprecationWarning: pretrained is deprecated, '
+                          'please use "init_cfg" instead')
+            self.init_cfg = dict(type='Pretrained', checkpoint=pretrained)
+			
         # strides of various layers
         s0 = model_config.strides[0]
         s1 = model_config.strides[1]

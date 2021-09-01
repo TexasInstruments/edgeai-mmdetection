@@ -55,11 +55,11 @@ else:
 #
 
 ######################################################
-backbone_type = 'MobileNetV2' #'MobileNetV2' #'MobileNetV1'
+backbone_type = 'MobileNetV2Lite' #'MobileNetV2Lite' #'MobileNetV1'
 mobilenetv2_pretrained='torchvision://mobilenet_v2'
 mobilenetv1_pretrained='./data/modelzoo/pytorch/image_classification/imagenet1k/jacinto_ai/mobilenet_v1_2019-09-06_17-15-44.pth'
-pretrained=(mobilenetv2_pretrained if backbone_type == 'MobileNetV2' else mobilenetv1_pretrained)
-bacbone_out_channels=[24,32,96,320] if backbone_type == 'MobileNetV2' else [128,256,512,1024]
+pretrained=(mobilenetv2_pretrained if backbone_type == 'MobileNetV2Lite' else mobilenetv1_pretrained)
+bacbone_out_channels=[24,32,96,320] if backbone_type == 'MobileNetV2Lite' else [128,256,512,1024]
 backbone_out_indices = (1, 2, 3, 4)
 
 fpn_in_channels = bacbone_out_channels

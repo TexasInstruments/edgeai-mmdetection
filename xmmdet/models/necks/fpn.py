@@ -6,8 +6,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 from mmcv.cnn import ConvModule, kaiming_init
 from mmcv.cnn import build_activation_layer
+from mmcv.runner.fp16_utils import auto_fp16
 
-from mmdet.core import auto_fp16
 from mmdet.models.builder import NECKS
 from ...ops import ConvModuleWrapper
 

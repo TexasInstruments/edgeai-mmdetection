@@ -76,7 +76,9 @@ from mmdet.models.builder import BACKBONES
 from torchvision import xnn
 
 ###################################################
-__all__ = ['MobileNetV2Base', 'MobileNetV2', 'mobilenet_v2']
+# mmdetection has added MobileNet backbone recently. That is why this is renamed with lite
+
+__all__ = ['MobileNetV2LiteBase', 'MobileNetV2Lite', 'mobilenet_v2_lite']
 
 
 ###################################################
@@ -110,7 +112,7 @@ def get_config():
     return ModelConfig()
 
 model_urls = {
-    'mobilenet_v2': 'https://download.pytorch.org/models/mobilenet_v2-b0353104.pth',
+    'mobilenet_v2_lite': 'https://download.pytorch.org/models/mobilenet_v2-b0353104.pth',
 }
 
 
@@ -155,7 +157,7 @@ class InvertedResidual(torch.nn.Module):
 
 
 
-class MobileNetV2Base(torch.nn.Module):
+class MobileNetV2LiteBase(torch.nn.Module):
     def __init__(self, BlockBuilder, model_config):
         """
         MobileNet V2 main class
@@ -167,10 +169,18 @@ class MobileNetV2Base(torch.nn.Module):
             round_nearest (int): Round the number of channels in each layer to be a multiple of this number
             Set to 1 to turn off rounding
         """
-        super().__init__()
+        super().__init__(init_cfg)
+		
         self.model_config = model_config
         self.num_classes = self.model_config.num_classes
 
+        assert not (init_cfg and pretrained), \
+            'init_cfg and pretrained cannot be setting at the same time'
+        if isinstance(pretrained, str):
+            warnings.warn('DeprecationWarning: pretrained is deprecated, '
+                          'please use "init_cfg" instead')
+            self.init_cfg = dict(type='Pretrained', checkpoint=pretrained)
+			
         # strides of various layers
         s0 = model_config.strides[0]
         s1 = model_config.strides[1]
@@ -243,7 +253,7 @@ class MobileNetV2Base(torch.nn.Module):
 
 
 @BACKBONES.register_module
-class MobileNetV2(MobileNetV2Base):
+class MobileNetV2Lite(MobileNetV2LiteBase):
     def __init__(self, **kwargs):
         model_config = get_config()
         for key, value in kwargs.items():
@@ -327,7 +337,7 @@ class MobileNetV2(MobileNetV2Base):
 
 
 #######################################################################
-def mobilenet_v2(pretrained=False, progress=True, **kwargs):
+def mobilenet_v2_lite(pretrained=False, progress=True, **kwargs):
     """
     Constructs a MobileNetV2 architecture from
     `"MobileNetV2: Inverted Residuals and Linear Bottlenecks" <https://arxiv.org/abs/1801.04381>`_.
@@ -336,8 +346,8 @@ def mobilenet_v2(pretrained=False, progress=True, **kwargs):
         pretrained (bool): If True, returns a model pre-trained on ImageNet
         progress (bool): If True, displays a progress bar of the download to stderr
     """
-    model = MobileNetV2(**kwargs)
+    model = MobileNetV2Lite(**kwargs)
     if pretrained is True:
-        state_dict = xnn.utils.load_state_dict_from_url(model_urls['mobilenet_v2'], progress=progress)
+        state_dict = xnn.utils.load_state_dict_from_url(model_urls['mobilenet_v2_lite'], progress=progress)
         model.load_state_dict(state_dict)
     return model

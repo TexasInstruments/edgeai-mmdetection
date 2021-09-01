@@ -20,3 +20,4 @@ print_model_complexity = True
 
 # fp16 settings
 #fp16 = dict(loss_scale=512.)
+#fp16 = dict(loss_scale='dynamic')
