@@ -64,5 +64,3 @@ else:
     args = train_mmdet.parse_args()
     train_mmdet.main(args)
 #
-
-

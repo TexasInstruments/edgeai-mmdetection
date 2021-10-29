@@ -51,7 +51,7 @@ assert input_size is not None, 'input_size could not be obtained automatically -
 
 print(f'Exporting onnx+proto model for: {config} @ {date} with input_size {input_size}')
 sys.argv = [sys.argv[0], f'{config}', f'{checkpoint}', f'--shape', f'{input_size[0]}', f'{input_size[1]}',
-            f'--opset_version', f'{opset_version}',  f'--out={outfile}']
+            f'--opset-version', f'{opset_version}',  f'--out={outfile}']
 args = pytorch2onnx.parse_args()
 pytorch2onnx.main(args)
 
