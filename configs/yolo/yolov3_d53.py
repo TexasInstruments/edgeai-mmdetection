@@ -56,11 +56,12 @@ else:
 #
 
 input_size_divisor = 32
+pretrained = 'open-mmlab://darknet53'
 
 model = dict(
     type='YOLOV3',
-    pretrained='open-mmlab://darknet53',
-    backbone=dict(type='Darknet', depth=53, out_indices=(3, 4, 5)),
+    backbone=dict(type='Darknet', depth=53, out_indices=(3, 4, 5),
+                  init_cfg=dict(type='Pretrained', checkpoint=pretrained)),
     neck=dict(
         type='YOLOV3Neck',
         num_scales=3,

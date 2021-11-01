@@ -50,7 +50,6 @@ norm_cfg = None
 
 model = dict(
     type='RetinaNet',
-    pretrained=pretrained,
     backbone=dict(
         type='ResNet',
         depth=backbone_depth,
@@ -59,7 +58,8 @@ model = dict(
         frozen_stages=1,
         norm_cfg=dict(type='BN', requires_grad=True),
         norm_eval=True,
-        style='pytorch'),
+        style='pytorch',
+        init_cfg=dict(type='Pretrained', checkpoint=pretrained)),
     neck=dict(
         type=fpn_type,
         in_channels=fpn_in_channels,

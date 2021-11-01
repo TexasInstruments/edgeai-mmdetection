@@ -12,7 +12,7 @@ from ...ops import ConvModuleWrapper
 
 from torchvision.edgeailite import xnn
 
-@NECKS.register_module(force=True)
+@NECKS.register_module('YOLOV3Neck', force=True)
 class YOLOV3Neck(nn.Module):
     """The neck of YOLOV3.
 
@@ -143,7 +143,7 @@ class DetectionLiteBlock(nn.Module):
         return out
 
 
-@NECKS.register_module(force=True)
+@NECKS.register_module('YOLOV3LiteNeck', force=True)
 class YOLOV3LiteNeck(nn.Module):
     """The neck of YOLOV3.
 

@@ -85,17 +85,17 @@ fpn_out_channels = regnet_cfg['bacbone_out_channels'][:-1][::-1]
 input_size_divisor = 32
 conv_cfg = dict(type=decoder_conv_type, group_size_dw=group_size_dw)
 norm_cfg = dict(type='BN')
-act_cfg=dict(type='ReLU')
+act_cfg = dict(type='ReLU')
 
 model = dict(
     type='YOLOV3',
-    pretrained=pretrained,
     backbone=dict(
         type=backbone_type,
         arch=backbone_arch,
         out_indices=backbone_out_indices,
         norm_eval=False,
-        style='pytorch'),
+        style='pytorch',
+        init_cfg=dict(type='Pretrained', checkpoint=pretrained)),
     neck=dict(
         type='YOLOV3LiteNeck',
         num_scales=3,

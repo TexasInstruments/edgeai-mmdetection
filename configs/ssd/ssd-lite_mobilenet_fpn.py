@@ -82,7 +82,6 @@ norm_cfg = dict(type='BN')
 
 model = dict(
     type='SingleStageDetector',
-    pretrained=pretrained,
     backbone=dict(
         type=backbone_type,
         strides=(2, 2, 2, 2, 2),
@@ -92,7 +91,8 @@ model = dict(
         extra_channels=None,
         out_indices=backbone_out_indices,
         out_feature_indices=None,
-        l2_norm_scale=None),
+        l2_norm_scale=None,
+        init_cfg=dict(type='Pretrained', checkpoint=pretrained)),
     neck=dict(
         type=decoder_fpn_type,
         in_channels=fpn_in_channels,

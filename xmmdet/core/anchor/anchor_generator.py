@@ -7,7 +7,7 @@ from torch.nn.modules.utils import _pair
 from mmdet.core.anchor.builder import ANCHOR_GENERATORS
 from mmdet.core.anchor import AnchorGenerator
 
-@ANCHOR_GENERATORS.register_module(force=True)
+@ANCHOR_GENERATORS.register_module('SSDAnchorGenerator', force=True)
 class SSDAnchorGenerator(AnchorGenerator):
     """Anchor generator for SSD
 

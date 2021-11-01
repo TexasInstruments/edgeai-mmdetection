@@ -106,7 +106,7 @@ class Bottleneck(_Bottleneck):
             del self._modules[plugin_name]
 
 
-@BACKBONES.register_module(force=True)
+@BACKBONES.register_module('ResNeXt', force=True)
 class ResNeXt(ResNet):
     """ResNeXt backbone.
 

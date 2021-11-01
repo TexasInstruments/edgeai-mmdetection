@@ -1,16 +1,20 @@
+# Copyright (c) OpenMMLab. All rights reserved.
 import random
+import warnings
 
 import numpy as np
 import torch
 from mmcv.parallel import MMDataParallel, MMDistributedDataParallel
 from mmcv.runner import (HOOKS, DistSamplerSeedHook, EpochBasedRunner,
-                         Fp16OptimizerHook, OptimizerHook, build_optimizer)
+                         Fp16OptimizerHook, OptimizerHook, build_optimizer,
+                         build_runner)
 from mmcv.utils import build_from_cfg
 
 from mmdet.core import DistEvalHook, EvalHook
-from mmdet.datasets import build_dataloader, build_dataset
-from ..utils import (get_root_logger, XMMDetEpochBasedRunner, XMMDetNoOptimizerHook, \
-                XMMDetDataParallel, FreezeRangeHook)
+from mmdet.datasets import (build_dataloader, build_dataset,
+                            replace_ImageToTensor)
+
+from ..utils import (get_root_logger, XMMDetEpochBasedRunner, XMMDetNoOptimizerHook, FreezeRangeHook)
 
 
 def set_random_seed(seed, deterministic=False):
@@ -39,7 +43,7 @@ def train_detector(model,
                    validate=False,
                    timestamp=None,
                    meta=None):
-    logger = get_root_logger(cfg.log_level)
+    logger = get_root_logger(log_level=cfg.log_level)
 
     # prepare data loaders
     dataset = dataset if isinstance(dataset, (list, tuple)) else [dataset]
@@ -79,23 +83,41 @@ def train_detector(model,
             broadcast_buffers=False,
             find_unused_parameters=find_unused_parameters)
     else:
-        model = XMMDetDataParallel(
+        model = MMDataParallel(
             model.cuda(cfg.gpu_ids[0]), device_ids=cfg.gpu_ids)
 
     # build runner
-    quantize = cfg.get('quantize', False)
     optimizer = build_optimizer(model, cfg.optimizer)
-    runner = XMMDetEpochBasedRunner(
-        model,
-        optimizer=optimizer,
-        work_dir=cfg.work_dir,
-        logger=logger,
-        meta=meta)
+
+    if 'runner' not in cfg:
+        cfg.runner = {
+            'type': 'EpochBasedRunner',
+            'max_epochs': cfg.total_epochs
+        }
+        warnings.warn(
+            'config is now expected to have a `runner` section, '
+            'please set `runner` in your config.', UserWarning)
+    else:
+        if 'total_epochs' in cfg:
+            assert cfg.total_epochs == cfg.runner.max_epochs
+
+    runner = build_runner(
+        cfg.runner,
+        default_args=dict(
+            model=model,
+            optimizer=optimizer,
+            work_dir=cfg.work_dir,
+            logger=logger,
+            meta=meta))
+
     # an ugly workaround to make .log and .log.json filenames the same
     runner.timestamp = timestamp
 
     # fp16 setting
     fp16_cfg = cfg.get('fp16', None)
+	
+    quantize = cfg.get('quantize', False)
+	
     if quantize == 'calibration':
         optimizer_config = XMMDetNoOptimizerHook()
     elif fp16_cfg is not None:
@@ -111,7 +133,8 @@ def train_detector(model,
                                    cfg.checkpoint_config, cfg.log_config,
                                    cfg.get('momentum_config', None))
     if distributed:
-        runner.register_hook(DistSamplerSeedHook())
+        if isinstance(runner, EpochBasedRunner):
+            runner.register_hook(DistSamplerSeedHook())
 
     # register train hooks
     freeze_range = bool(quantize)
@@ -135,8 +158,12 @@ def train_detector(model,
             dist=distributed,
             shuffle=False)
         eval_cfg = cfg.get('evaluation', {})
+        eval_cfg['by_epoch'] = cfg.runner['type'] != 'IterBasedRunner'
         eval_hook = DistEvalHook if distributed else EvalHook
-        runner.register_hook(eval_hook(val_dataloader, **eval_cfg))
+        # In this PR (https://github.com/open-mmlab/mmcv/pull/1193), the
+        # priority of IterTimerHook has been modified from 'NORMAL' to 'LOW'.
+        runner.register_hook(
+            eval_hook(val_dataloader, **eval_cfg), priority='LOW')
 
     # user-defined hooks
     if cfg.get('custom_hooks', None):
@@ -156,4 +183,4 @@ def train_detector(model,
         runner.resume(cfg.resume_from)
     elif cfg.load_from:
         runner.load_checkpoint(cfg.load_from)
-    runner.run(data_loaders, cfg.workflow, cfg.total_epochs)
+    runner.run(data_loaders, cfg.workflow)

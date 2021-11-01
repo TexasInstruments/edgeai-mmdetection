@@ -56,18 +56,19 @@ else:
 #
 
 input_size_divisor = 32
-act_cfg=dict(type='ReLU')
+act_cfg = dict(type='ReLU')
+pretrained = 'open-mmlab://darknet53'
 
 model = dict(
     type='YOLOV3',
-    pretrained='open-mmlab://darknet53',
-    backbone=dict(type='Darknet', depth=53, out_indices=(3, 4, 5), act_cfg=act_cfg),
+    backbone=dict(type='Darknet', depth=53, out_indices=(3, 4, 5), act_cfg=act_cfg,
+                  init_cfg=dict(type='Pretrained', checkpoint=pretrained)),
     neck=dict(
         type='YOLOV3Neck',
         num_scales=3,
         in_channels=[1024, 512, 256],
         out_channels=[512, 256, 128],
-        act_cfg=act_cfg),
+        act_cfg=act_cfg,),
     bbox_head=dict(
         type='YOLOV3Head',
         num_classes=80,

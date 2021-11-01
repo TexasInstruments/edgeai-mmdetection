@@ -119,13 +119,13 @@ norm_cfg = dict(type='BN')
 
 model = dict(
     type='SingleStageDetector',
-    pretrained=pretrained,
     backbone=dict(
         type=backbone_type,
         arch=backbone_arch,
         out_indices=backbone_out_indices,
         norm_eval=False,
-        style='pytorch'),
+        style='pytorch',
+        init_cfg=dict(type='Pretrained', checkpoint=pretrained)),
     neck=dict(
         type=decoder_fpn_type,
         in_channels=fpn_in_channels,

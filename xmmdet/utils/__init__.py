@@ -6,5 +6,5 @@ from .runner import XMMDetEpochBasedRunner, XMMDetNoOptimizerHook, FreezeRangeHo
 from .save_model import save_model_proto
 from .quantize import XMMDetQuantTrainModule, XMMDetQuantCalibrateModule, \
     XMMDetQuantTestModule, is_mmdet_quant_module
-from .data_parallel import XMMDetDataParallel
+
 

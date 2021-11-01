@@ -69,7 +69,7 @@ import torch
 import logging
 import numpy  as np
 import warnings
-from mmcv.runner import load_checkpoint
+from mmcv.runner import BaseModule, load_checkpoint
 
 from mmdet.utils import get_root_logger
 from mmdet.models.builder import BACKBONES
@@ -108,8 +108,10 @@ class ModelConfig(xnn.utils.ConfigNode):
         s_strides = (2,4,8,16,encoder_stride)
         return s_strides
 
+
 def get_config():
     return ModelConfig()
+
 
 model_urls = {
     'mobilenet_v2_lite': 'https://download.pytorch.org/models/mobilenet_v2-b0353104.pth',
@@ -142,12 +144,10 @@ class InvertedResidual(torch.nn.Module):
         if linear_dw:
             seq_layers.append(activation(inplace=True))
 
-
         self.conv = torch.nn.Sequential(*seq_layers)
 
         if self.use_res_connect:
             self.add = xnn.layers.AddBlock(signed=True)
-
 
     def forward(self, x):
         if self.use_res_connect:
@@ -156,9 +156,8 @@ class InvertedResidual(torch.nn.Module):
             return self.conv(x)
 
 
-
-class MobileNetV2LiteBase(torch.nn.Module):
-    def __init__(self, BlockBuilder, model_config):
+class MobileNetV2LiteBase(BaseModule):
+    def __init__(self, BlockBuilder, model_config, pretrained=None, init_cfg=None):
         """
         MobileNet V2 main class
 
@@ -170,17 +169,19 @@ class MobileNetV2LiteBase(torch.nn.Module):
             Set to 1 to turn off rounding
         """
         super().__init__(init_cfg)
-		
+
         self.model_config = model_config
         self.num_classes = self.model_config.num_classes
 
+        assert not (init_cfg and pretrained), \
+            'init_cfg and pretrained cannot be setting at the same time'
         assert not (init_cfg and pretrained), \
             'init_cfg and pretrained cannot be setting at the same time'
         if isinstance(pretrained, str):
             warnings.warn('DeprecationWarning: pretrained is deprecated, '
                           'please use "init_cfg" instead')
             self.init_cfg = dict(type='Pretrained', checkpoint=pretrained)
-			
+
         # strides of various layers
         s0 = model_config.strides[0]
         s1 = model_config.strides[1]
@@ -230,7 +231,7 @@ class MobileNetV2LiteBase(torch.nn.Module):
         #
 
         # building classifier
-        if self.model_config.num_classes != None:
+        if self.model_config.num_classes is not None:
             output_channels = xnn.utils.make_divisible_by8(self.model_config.layer_setting[-1][1] * width_mult)
             features.append(xnn.layers.ConvNormAct2d(channels, output_channels, kernel_size=1, activation=activation))
             channels = output_channels 
@@ -254,7 +255,7 @@ class MobileNetV2LiteBase(torch.nn.Module):
 
 @BACKBONES.register_module
 class MobileNetV2Lite(MobileNetV2LiteBase):
-    def __init__(self, **kwargs):
+    def __init__(self, pretrained=None, init_cfg=None, **kwargs):
         model_config = get_config()
         for key, value in kwargs.items():
             if key == 'model_config':
@@ -262,7 +263,7 @@ class MobileNetV2Lite(MobileNetV2LiteBase):
             elif key in ('out_indices', 'strides', 'extra_channels', 'frozen_stages', 'act_cfg'):
                 setattr(model_config, key, value)
         #
-        super().__init__(InvertedResidual, model_config)
+        super().__init__(InvertedResidual, model_config, pretrained=pretrained, init_cfg=init_cfg)
 
         self.extra = self._make_extra_layers(320, self.model_config.extra_channels) \
             if self.model_config.extra_channels else None
@@ -270,14 +271,13 @@ class MobileNetV2Lite(MobileNetV2LiteBase):
         # weights init
         xnn.utils.module_weights_init(self)
 
-
-    def init_weights(self, pretrained=None):
-        if pretrained is not None:
-            assert isinstance(pretrained, str), f'Make sure that the pretrained is correct. Got: {pretrained}'
-            logger = get_root_logger()
-            load_checkpoint(self, pretrained, strict=False, logger=logger)
-        else:
-            warnings.warn('No pretrained is provided.')
+    # def init_weights(self, pretrained=None):
+    #     if pretrained is not None:
+    #         assert isinstance(pretrained, str), f'Make sure that the pretrained is correct. Got: {pretrained}'
+    #         logger = get_root_logger()
+    #         load_checkpoint(self, pretrained, strict=False, logger=logger)
+    #     else:
+    #         warnings.warn('No pretrained is provided.')
 
 
     def forward(self, x):

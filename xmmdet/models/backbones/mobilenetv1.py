@@ -115,13 +115,12 @@ model_urls = {
 
 
 class MobileNetV1Base(BaseModule):
-    def __init__(self, BlockBuilder, model_config, pretrained=None,
-                 init_cfg=None):
+    def __init__(self, BlockBuilder, model_config, pretrained=None, init_cfg=None):
         """
         MobileNet V1 main class
         """
         super().__init__(init_cfg)
-		
+
         self.model_config = model_config
         self.num_classes = self.model_config.num_classes
 
@@ -131,7 +130,7 @@ class MobileNetV1Base(BaseModule):
             warnings.warn('DeprecationWarning: pretrained is deprecated, '
                           'please use "init_cfg" instead')
             self.init_cfg = dict(type='Pretrained', checkpoint=pretrained)
-			
+
         # strides of various layers
         s0 = model_config.strides[0]
         s1 = model_config.strides[1]
@@ -176,7 +175,7 @@ class MobileNetV1Base(BaseModule):
         #
 
         # building classifier
-        if self.model_config.num_classes != None:
+        if self.model_config.num_classes is not None:
             self.classifier = torch.nn.Sequential(
                 torch.nn.Dropout(0.2) if self.model_config.dropout else xnn.layers.BypassBlock(),
                 torch.nn.Linear(channels, self.num_classes),
@@ -197,7 +196,7 @@ class MobileNetV1Base(BaseModule):
 
 @BACKBONES.register_module
 class MobileNetV1(MobileNetV1Base):
-    def __init__(self, **kwargs):
+    def __init__(self, pretrained=None, init_cfg=None, **kwargs):
         model_config = get_config()
         for key, value in kwargs.items():
             if key == 'model_config':
@@ -205,7 +204,7 @@ class MobileNetV1(MobileNetV1Base):
             elif key in ('out_indices', 'strides', 'extra_channels', 'frozen_stages', 'act_cfg'):
                 setattr(model_config, key, value)
         #
-        super().__init__(xnn.layers.ConvDWSepNormAct2d, model_config)
+        super().__init__(xnn.layers.ConvDWSepNormAct2d, model_config, pretrained=pretrained, init_cfg=init_cfg)
 
         self.extra = self._make_extra_layers(1024, self.model_config.extra_channels) \
             if self.model_config.extra_channels else None
@@ -213,15 +212,13 @@ class MobileNetV1(MobileNetV1Base):
         # weights init
         xnn.utils.module_weights_init(self)
 
-
-    def init_weights(self, pretrained=None):
-        if pretrained is not None:
-            assert isinstance(pretrained, str), f'Make sure that the pretrained is correct. Got: {pretrained}'
-            logger = get_root_logger()
-            load_checkpoint(self, pretrained, strict=False, logger=logger)
-        else:
-            warnings.warn('No pretrained is provided.')
-
+    # def init_weights(self, pretrained=None):
+    #     if pretrained is not None:
+    #         assert isinstance(pretrained, str), f'Make sure that the pretrained is correct. Got: {pretrained}'
+    #         logger = get_root_logger()
+    #         load_checkpoint(self, pretrained, strict=False, logger=logger)
+    #     else:
+    #         warnings.warn('No pretrained is provided.')
 
     def forward(self, x):
         if self.num_classes is not None:

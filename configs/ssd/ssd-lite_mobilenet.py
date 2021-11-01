@@ -68,7 +68,6 @@ norm_cfg = dict(type='BN')
 
 model = dict(
     type='SingleStageDetector',
-    pretrained=pretrained,
     backbone=dict(
         type=backbone_type,
         strides=(2, 2, 2, 2, 2),
@@ -78,7 +77,8 @@ model = dict(
         extra_channels=bacbone_out_channels[2:],
         out_indices=backbone_out_indices[-2:],
         out_feature_indices=None,
-        l2_norm_scale=None),
+        l2_norm_scale=None,
+        init_cfg=dict(type='Pretrained', checkpoint=pretrained)),
     neck=None,
     bbox_head=dict(
         type='SSDLiteHead',

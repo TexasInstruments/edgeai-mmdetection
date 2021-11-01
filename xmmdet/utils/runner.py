@@ -1,5 +1,6 @@
 import torch
 import mmcv
+from mmcv.runner.builder import RUNNERS
 from mmcv.runner import EpochBasedRunner
 from mmcv.runner import OptimizerHook, HOOKS, Hook
 from torchvision.edgeailite import xnn
@@ -20,6 +21,8 @@ def mmdet_save_checkpoint(model, *args, **kwargs):
     mmcv.runner.save_checkpoint(model_orig, *args, **kwargs)
 
 
+# replace the EpochBasedRunner
+@RUNNERS.register_module('EpochBasedRunner', force=True)
 class XMMDetEpochBasedRunner(EpochBasedRunner):
     def _get_model_orig(self):
         model_orig = self.model
@@ -33,7 +36,6 @@ class XMMDetEpochBasedRunner(EpochBasedRunner):
             is_model_orig = False
         #
         return model_orig, is_model_orig
-
 
     def save_checkpoint(self, *args, **kwargs):
         model_backup = self.model
