@@ -19,6 +19,7 @@ from xmmdet.datasets import build_dataset
 from xmmdet.models import build_detector
 from xmmdet.utils import collect_env, get_root_logger, get_model_complexity_info, \
     LoggerStream, XMMDetQuantTrainModule, XMMDetQuantCalibrateModule
+from contextlib import redirect_stdout
 
 
 def parse_args():
@@ -168,9 +169,8 @@ def main(args=None):
         input_res = (3, *cfg.input_size) if isinstance(cfg.input_size, (list, tuple)) else \
             (3, cfg.input_size, cfg.input_size)
         logger_stream = LoggerStream(logger)
-        macs_count, params_count = get_model_complexity_info(model, input_res, ost=logger_stream)
-        logger.info(f'Compute   : {macs_count}')
-        logger.info(f'Parameters: {params_count}')
+        with redirect_stdout(logger_stream):
+            get_model_complexity_info(model, input_res)
 
     if hasattr(cfg, 'quantize') and cfg.quantize:
         input_res = (3, *cfg.input_size) if isinstance(cfg.input_size, (list, tuple)) else \
