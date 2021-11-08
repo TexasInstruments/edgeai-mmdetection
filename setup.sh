@@ -14,5 +14,5 @@ mim install mmdet=2.16.0
 pip3 install onnxruntime
 pip3 install torchinfo
 
-echo "This package depdends on edgeai-torchvision:"
+echo "This package depends on edgeai-torchvision:"
 echo "Please visit https://github.com/TexasInstruments/edgeai-torchvision and clone and install that package."
