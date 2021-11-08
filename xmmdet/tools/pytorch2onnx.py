@@ -48,7 +48,7 @@ def pytorch2onnx(args,
     else:
         model_org = model
     #
-	
+
     if skip_postprocess:
         warnings.warn('Not all models support export onnx without post '
                       'process, especially two stage detectors!')
@@ -112,9 +112,13 @@ def pytorch2onnx(args,
         verbose=show,
         opset_version=opset_version,
         dynamic_axes=dynamic_axes)
+    # shape inference is required to support onnx+proto detection models in edgeai-tidl-tools
+    onnx.shape_inference.infer_shapes_path(output_file, output_file)
 
     output_proto_file = osp.splitext(output_file)[0] + '-proto.onnx'
     pytorch2proto(cfg, model, img_list, output_file, output_proto_file, opset_version=opset_version)
+    # shape inference is required to support onnx+proto detection models in edgeai-tidl-tools
+    onnx.shape_inference.infer_shapes_path(output_proto_file, output_proto_file)
 
     model.forward = origin_forward
 
