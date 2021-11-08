@@ -12,7 +12,6 @@ mim install mmdet=2.16.0
 
 
 pip3 install onnxruntime
-pip3 install onnxoptimizer
 pip3 install torchinfo
 
 echo "This package depdends on edgeai-torchvision:"
