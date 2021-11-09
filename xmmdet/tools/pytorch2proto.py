@@ -110,17 +110,20 @@ def retrieve_onnx_names(input_data, partial_model_path, full_model_path):
     return matched_names
 
 
-def pytorch2proto(cfg, model, input_data, output_onnx_file, out_proto_file, opset_version):
+def pytorch2proto(cfg, model, input_data, output_onnx_file, out_proto_file, output_names, opset_version):
     input_data = input_data[0] if isinstance(input_data, (list,tuple)) and \
                                   isinstance(input_data[0], (torch.Tensor, np.ndarray)) else input
-    save_model_proto(cfg, model, input_data, output_filename=out_proto_file, opset_version=opset_version)
+    save_model_proto(cfg, model, input_data, output_filename=out_proto_file, output_names=output_names, opset_version=opset_version)
+    matched_names = None
     if output_onnx_file is not None:
         matched_names = retrieve_onnx_names(input_data, out_proto_file, output_onnx_file)
         if matched_names is not None:
-            output_names = list(matched_names.values())
+            proto_names = list(matched_names.values())
             save_model_proto(cfg, model, input_data, output_filename=output_onnx_file,
-                             opset_version=opset_version, output_names=output_names, save_onnx=False)
-        else:
-            print('Tensor names could not be located; prototxt file corresponding to model.onnx wont be written')
+                             opset_version=opset_version, proto_names=proto_names, output_names=output_names,
+                             save_onnx=False)
         #
     #
+    if not matched_names:
+        print('Tensor names could not be located; prototxt file corresponding to full model '
+              '(model.onnx) wont be written')

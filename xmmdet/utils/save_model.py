@@ -35,7 +35,8 @@ from google.protobuf import text_format
 __all__ = ['save_model_proto']
 
 
-def save_model_proto(cfg, model, input, output_filename, output_names=None, save_onnx=True, opset_version=11):
+def save_model_proto(cfg, model, input, output_filename, input_names=None, proto_names=None, output_names=None,
+                     save_onnx=True, opset_version=11):
     is_cuda = next(model.parameters()).is_cuda
     input_list = input if isinstance(input, torch.Tensor) else _create_rand_inputs(input, is_cuda)
     input_size = input.size() if isinstance(input, torch.Tensor) else input
@@ -44,64 +45,45 @@ def save_model_proto(cfg, model, input, output_filename, output_names=None, save
     is_fcos = hasattr(cfg.model, 'bbox_head') and ('FCOS' in cfg.model.bbox_head.type)
     is_retinanet = hasattr(cfg.model, 'bbox_head') and ('Retina' in cfg.model.bbox_head.type)
     is_yolov3 = hasattr(cfg.model, 'bbox_head') and ('YOLOV3' in cfg.model.bbox_head.type)
+    input_names = input_names or ('input',)
+
     if is_ssd:
-        input_names = ['input']
-        if output_names is None:
-            output_names = []
-            for cls_idx, cls in enumerate(model.bbox_head.cls_convs):
-                output_names.append(f'cls_convs_{cls_idx}')
-            #
-            for reg_idx, reg in enumerate(model.bbox_head.reg_convs):
-                output_names.append(f'reg_convs_{reg_idx}')
-            #
+        if proto_names is None:
+            proto_names = [f'cls_convs_{cls_idx}' for cls_idx, cls in enumerate(model.bbox_head.cls_convs)]
+            proto_names += [f'reg_convs_{reg_idx}' for reg_idx, reg in enumerate(model.bbox_head.reg_convs)]
         #
-        _save_mmdet_onnx(cfg, model, input_list, output_filename, input_names, output_names,
-                         opset_version=opset_version, save_onnx=save_onnx)
-        _save_mmdet_proto_ssd(cfg, model, input_size, output_filename, input_names, output_names)
+        if save_onnx:
+            _save_mmdet_onnx(cfg, model, input_list, output_filename, input_names, proto_names, output_names, opset_version=opset_version)
+        #
+        _save_mmdet_proto_ssd(cfg, model, input_size, output_filename, input_names, proto_names, output_names)
     elif is_retinanet:
-        input_names = ['input']
-        if output_names is None:
-            output_names = []
-            for i in range(model.neck.num_outs):
-                output_names.append(f'retina_cls_{i}')
-            #
-            for i in range(model.neck.num_outs):
-                output_names.append(f'retina_reg_{i}')
-            #
+        if proto_names is None:
+            proto_names = [f'retina_cls_{i}' for i in range(model.neck.num_outs)]
+            proto_names += [f'retina_reg_{i}' for i in range(model.neck.num_outs)]
         #
-        _save_mmdet_onnx(cfg, model, input_list, output_filename, input_names, output_names,
-                         opset_version=opset_version, save_onnx=save_onnx)
-        _save_mmdet_proto_retinanet(cfg, model, input_size, output_filename, input_names, output_names)
+        if save_onnx:
+            _save_mmdet_onnx(cfg, model, input_list, output_filename, input_names, proto_names, output_names, opset_version=opset_version)
+        #
+        _save_mmdet_proto_retinanet(cfg, model, input_size, output_filename, input_names, proto_names, output_names)
     elif is_yolov3:
-        input_names = ['input']
-        if output_names is None:
-            output_names = []
-            for i in range(model.neck.num_scales):
-                output_names.append(f'convs_pred_{i}')
-            #
+        if proto_names is None:
+            proto_names = [f'convs_pred_{i}' for i in range(model.neck.num_scales)]
         #
-        _save_mmdet_onnx(cfg, model, input_list, output_filename, input_names, output_names,
-                         opset_version=opset_version, save_onnx=save_onnx)
-        _save_mmdet_proto_yolov3(cfg, model, input_size, output_filename, input_names, output_names)
+        if save_onnx:
+            _save_mmdet_onnx(cfg, model, input_list, output_filename, input_names, proto_names, output_names, opset_version=opset_version)
+        #
+        _save_mmdet_proto_yolov3(cfg, model, input_size, output_filename, input_names, proto_names, output_names)
     elif is_fcos:
-        input_names = ['input']
-        if output_names is None:
-            output_names = []
-            for i in range(model.neck.num_outs):
-                output_names.append(f'cls_convs_{i}')
-            #
-            for i in range(model.neck.num_outs):
-                output_names.append(f'reg_convs_{i}')
-            #
-            for i in range(model.neck.num_outs):
-                output_names.append(f'centerness_convs_{i}')
-            #
+        if proto_names is None:
+            proto_names = [f'cls_convs_{i}' for i in range(model.neck.num_outs)]
+            proto_names += [f'reg_convs_{i}' for i in range(model.neck.num_outs)]
+            proto_names += [f'centerness_convs_{i}' for i in range(model.neck.num_outs)]
         #
-        _save_mmdet_onnx(cfg, model, input_list, output_filename, input_names, output_names,
-                         opset_version=opset_version, save_onnx=save_onnx)
-    else:
-        _save_mmdet_onnx(cfg, model, input_list, output_filename,
-                         opset_version=opset_version, save_onnx=save_onnx)
+        if save_onnx:
+            _save_mmdet_onnx(cfg, model, input_list, output_filename, input_names, proto_names, output_names, opset_version=opset_version)
+        #
+    elif save_onnx:
+        _save_mmdet_onnx(cfg, model, input_list, output_filename, input_names, proto_names, output_names, opset_version=opset_version)
     #
 
 
@@ -112,11 +94,8 @@ def _create_rand_inputs(input_size, is_cuda=False):
     return x
 
 
-def _save_mmdet_onnx(cfg, model, input_list, output_filename, input_names=None, output_names=None,
-                     opset_version=11, save_onnx=True):
-    if not save_onnx:
-        return
-    #
+def _save_mmdet_onnx(cfg, model, input_list, output_filename, input_names=None, proto_names=None, output_names=None,
+                     opset_version=11):
     #https://github.com/open-mmlab/mmdetection/pull/1082
     assert hasattr(model, 'forward_dummy'), 'wrting onnx is not supported by this model'
     model.eval()
@@ -128,7 +107,7 @@ def _save_mmdet_onnx(cfg, model, input_list, output_filename, input_names=None, 
         input_list,
         output_filename,
         input_names=input_names,
-        output_names=output_names,
+        output_names=proto_names,
         export_params=True,
         keep_initializers_as_inputs=True,
         do_constant_folding=True,
@@ -138,16 +117,16 @@ def _save_mmdet_onnx(cfg, model, input_list, output_filename, input_names=None, 
 
 
 ###########################################################
-def _save_mmdet_proto_ssd(cfg, model, input_size, output_filename, input_names=None, output_names=None):
+def _save_mmdet_proto_ssd(cfg, model, input_size, output_filename, input_names=None, proto_names=None, output_names=None):
     output_filename = os.path.splitext(output_filename)[0] + '.prototxt'
-    num_output_names = len(output_names)//2
-    cls_output_names = output_names[:num_output_names]
-    reg_output_names = output_names[num_output_names:]
+    num_proto_names = len(proto_names)//2
+    cls_proto_names = proto_names[:num_proto_names]
+    reg_proto_names = proto_names[num_proto_names:]
     bbox_head = model.bbox_head
     anchor_generator = bbox_head.anchor_generator
 
     prior_box_param = []
-    for h_idx in range(num_output_names):
+    for h_idx in range(num_proto_names):
         min_size=[anchor_generator.min_sizes[h_idx]]
         max_size=[anchor_generator.max_sizes[h_idx]]
         aspect_ratio=anchor_generator.ratios[h_idx][2::2]
@@ -158,14 +137,14 @@ def _save_mmdet_proto_ssd(cfg, model, input_size, output_filename, input_names=N
                                                                      variance=bbox_head.bbox_coder.stds, clip=False, flip=True))
     #
 
-    nms_param = mmdet_meta_arch_pb2.TIDLNmsParam(nms_threshold=0.45, top_k=100)
+    nms_param = mmdet_meta_arch_pb2.TIDLNmsParam(nms_threshold=0.45, top_k=200)
     detection_output_param = mmdet_meta_arch_pb2.TIDLOdPostProc(num_classes=bbox_head.num_classes+1, share_location=True,
                                             background_label_id=bbox_head.num_classes, nms_param=nms_param,
-                                            code_type=mmdet_meta_arch_pb2.CENTER_SIZE, keep_top_k=100,
-                                            confidence_threshold=0.5)
+                                            code_type=mmdet_meta_arch_pb2.CENTER_SIZE, keep_top_k=200,
+                                            confidence_threshold=0.3)
 
-    ssd = mmdet_meta_arch_pb2.TidlMaCaffeSsd(box_input=reg_output_names, class_input=cls_output_names,
-                                             output=['boxes','labels'], prior_box_param=prior_box_param,
+    ssd = mmdet_meta_arch_pb2.TidlMaCaffeSsd(box_input=reg_proto_names, class_input=cls_proto_names,
+                                             output=output_names, prior_box_param=prior_box_param,
                                              in_width=input_size[3], in_height=input_size[2],
                                              detection_output_param=detection_output_param,
                                              framework='MMDetection')
@@ -178,11 +157,11 @@ def _save_mmdet_proto_ssd(cfg, model, input_size, output_filename, input_names=N
 
 
 ###########################################################
-def _save_mmdet_proto_retinanet(cfg, model, input_size, output_filename, input_names=None, output_names=None):
+def _save_mmdet_proto_retinanet(cfg, model, input_size, output_filename, input_names=None, proto_names=None, output_names=None):
     output_filename = os.path.splitext(output_filename)[0] + '.prototxt'
-    num_output_names = len(output_names)//2
-    cls_output_names = output_names[:num_output_names]
-    reg_output_names = output_names[num_output_names:]
+    num_proto_names = len(proto_names)//2
+    cls_proto_names = proto_names[:num_proto_names]
+    reg_proto_names = proto_names[num_proto_names:]
     bbox_head = model.bbox_head
     anchor_generator = bbox_head.anchor_generator
 
@@ -193,17 +172,18 @@ def _save_mmdet_proto_retinanet(cfg, model, input_size, output_filename, input_n
                                                                 octave_base_scale=anchor_generator.octave_base_scale,
                                                                 scales_per_octave=anchor_generator.scales_per_octave)
 
-    nms_param = mmdet_meta_arch_pb2.TIDLNmsParam(nms_threshold=0.45, top_k=100)
+    nms_param = mmdet_meta_arch_pb2.TIDLNmsParam(nms_threshold=0.45, top_k=200)
     detection_output_param = mmdet_meta_arch_pb2.TIDLOdPostProc(num_classes=num_classes, share_location=True,
                                             background_label_id=background_label_id, nms_param=nms_param,
-                                            code_type=mmdet_meta_arch_pb2.CENTER_SIZE, keep_top_k=100,
-                                            confidence_threshold=0.5)
+                                            code_type=mmdet_meta_arch_pb2.CENTER_SIZE, keep_top_k=200,
+                                            confidence_threshold=0.3)
 
-    retinanet = mmdet_meta_arch_pb2.TidlMaRetinaNet(box_input=reg_output_names, class_input=cls_output_names, output='output',
-                                              x_scale=1.0, y_scale=1.0, width_scale=1.0, height_scale=1.0,
+    retinanet = mmdet_meta_arch_pb2.TidlMaRetinaNet(box_input=reg_proto_names, class_input=cls_proto_names,
+                                              output=output_names, x_scale=1.0, y_scale=1.0, width_scale=1.0, height_scale=1.0,
                                               in_width=input_size[3], in_height=input_size[2],
                                               score_converter=score_converter, anchor_param=anchor_param,
-                                              detection_output_param=detection_output_param)
+                                              detection_output_param=detection_output_param,
+                                              framework='MMDetection')
 
     arch = mmdet_meta_arch_pb2.TIDLMetaArch(name='retinanet',  tidl_retinanet=[retinanet])
 
@@ -213,9 +193,8 @@ def _save_mmdet_proto_retinanet(cfg, model, input_size, output_filename, input_n
 
 
 ###########################################################
-def _save_mmdet_proto_yolov3(cfg, model, input_size, output_filename, input_names=None, output_names=None):
+def _save_mmdet_proto_yolov3(cfg, model, input_size, output_filename, input_names=None, proto_names=None, output_names=None):
     output_filename = os.path.splitext(output_filename)[0] + '.prototxt'
-    #num_output_names = len(output_names)
     bbox_head = model.bbox_head
     anchor_generator = bbox_head.anchor_generator
     base_sizes = anchor_generator.base_sizes
@@ -226,21 +205,22 @@ def _save_mmdet_proto_yolov3(cfg, model, input_size, output_filename, input_name
 
     yolo_params = []
     for base_size_id, base_size in enumerate(base_sizes):
-        yolo_param = mmdet_meta_arch_pb2.TIDLYoloParams(input=output_names[base_size_id],
+        yolo_param = mmdet_meta_arch_pb2.TIDLYoloParams(input=proto_names[base_size_id],
                                                         anchor_width=[b[0] for b in base_size],
                                                         anchor_height=[b[1] for b in base_size])
         yolo_params.append(yolo_param)
 
-    nms_param = mmdet_meta_arch_pb2.TIDLNmsParam(nms_threshold=0.45, top_k=100)
+    nms_param = mmdet_meta_arch_pb2.TIDLNmsParam(nms_threshold=0.45, top_k=200)
     detection_output_param = mmdet_meta_arch_pb2.TIDLOdPostProc(num_classes=num_classes, share_location=True,
                                             background_label_id=background_label_id, nms_param=nms_param,
-                                            code_type=mmdet_meta_arch_pb2.CENTER_SIZE_EXP, keep_top_k=100,
-                                            confidence_threshold=0.5)
+                                            code_type=mmdet_meta_arch_pb2.CENTER_SIZE_EXP, keep_top_k=200,
+                                            confidence_threshold=0.3)
 
-    yolov3 = mmdet_meta_arch_pb2.TidlYoloOd(name='yolo_v3',
+    yolov3 = mmdet_meta_arch_pb2.TidlYoloOd(name='yolo_v3', output=output_names,
                                             in_width=input_size[3], in_height=input_size[2],
                                             yolo_param=yolo_params,
-                                            detection_output_param=detection_output_param)
+                                            detection_output_param=detection_output_param,
+                                            framework='MMDetection')
 
     arch = mmdet_meta_arch_pb2.TIDLMetaArch(name='yolo_v3',  tidl_yolo=[yolov3])
 
