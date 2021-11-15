@@ -2,7 +2,7 @@ echo "mmdetection is not installing cython properly - it has to be installed fro
 conda install -y cython
 
 echo "Installing pytorch and torchvision"
-pip3 install torch==1.9.0+cu111 -f https://download.pytorch.org/whl/torch_stable.html
+pip3 install torch==1.10.0+cu111 -f https://download.pytorch.org/whl/torch_stable.html
 
 
 echo "Installing mmdetection"
