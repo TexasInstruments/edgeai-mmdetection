@@ -17,9 +17,11 @@ from xmmdet.apis import multi_gpu_test, single_gpu_test
 from xmmdet.datasets import (build_dataloader, build_dataset,
                             replace_ImageToTensor)
 from xmmdet.models import build_detector
+from mmdet.utils import get_root_logger
 from xmmdet.utils import XMMDetQuantTestModule, save_model_proto, mmdet_load_checkpoint
 
 from torchvision.edgeailite import xnn
+
 
 def parse_args():
     parser = argparse.ArgumentParser(
@@ -180,10 +182,15 @@ def main(args=None):
 
     rank, _ = get_dist_info()
     # allows not to create
-    if args.work_dir is not None and rank == 0:
-        mmcv.mkdir_or_exist(osp.abspath(args.work_dir))
-        timestamp = time.strftime('%Y%m%d_%H%M%S', time.localtime())
-        json_file = osp.join(args.work_dir, f'eval_{timestamp}.json')
+    out_dir = os.path.dirname(args.out)
+    timestamp = time.strftime('%Y%m%d_%H%M%S', time.localtime())
+    if out_dir is not None and rank == 0:
+        mmcv.mkdir_or_exist(osp.abspath(out_dir))
+        json_file = osp.join(out_dir, f'eval_{timestamp}.json')
+
+    # init the logger before other steps
+    log_file = osp.join(out_dir, f'eval_{timestamp}.log')
+    logger = get_root_logger(log_file=log_file, log_level=cfg.log_level)
 
     # build the dataloader
     dataset = build_dataset(cfg.data.test)
@@ -247,7 +254,7 @@ def main(args=None):
                 eval_kwargs.pop(key, None)
             eval_kwargs.update(dict(metric=args.eval, **kwargs))
             metric = dataset.evaluate(outputs, **eval_kwargs)
-            print(metric)
+            logger.info(metric) #print(metric)
             metric_dict = dict(config=args.config, metric=metric)
             if args.work_dir is not None and rank == 0:
                 mmcv.dump(metric_dict, json_file)
